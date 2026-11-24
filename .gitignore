@@ -5,3 +5,7 @@
 log*.txt
 list.txt
 __pycache__/
+out/
+*.mp4
+aud/*.mp3
+aud/mix.wav
