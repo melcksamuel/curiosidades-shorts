@@ -7,3 +7,5 @@ stills/
 out_log_*.txt
 stimes.txt
 __pycache__/
+log*.txt
+list.txt
