@@ -1,11 +1,9 @@
+out/
+stills/
 *.mp4
+*.png
 *.wav
 *.mp3
-*.png
-log*.txt
-list.txt
+out_log_*.txt
+stimes.txt
 __pycache__/
-out/
-*.mp4
-aud/*.mp3
-aud/mix.wav
