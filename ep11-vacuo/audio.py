@@ -100,11 +100,10 @@ add(sfx,ding(),wt(9,'siga'),0.4); add(sfx,thud(),wt(9,'15'),0.9)
 def whoosh():
     n=int(.28*SR); t=np.arange(n)/SR
     x=lfilter([0.15],[1,-0.85],rng.standard_normal(n)); return x*np.sin(np.pi*t/.28)**2*2.2
-for i in range(len(D)):
-    for t0 in whips(i): add(sfx,whoosh(),starts[i]+t0-0.04,0.55)
+# sem efeito sonoro nas transições/deslizes de câmera (pedido do Melck)
 venv=lfilter([0.002],[1,-0.998],np.abs(voice)); venv=venv/(venv.max()+1e-9)
 duck=1-0.6*np.clip(venv*3,0,1)
-mix=voice*1.0+music*0.10*duck+sfx*0.28
+mix=voice*1.0+music*0.10*duck+sfx*0.12
 mix=np.tanh(mix*1.8); mix=mix/np.abs(mix).max()*10**(-3/20)
 fade=int(0.5*SR); mix[int(TOT*SR)-fade:int(TOT*SR)]*=np.linspace(1,0.3,fade)
 mix=mix[:int(TOT*SR)]
