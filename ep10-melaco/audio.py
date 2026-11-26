@@ -1,5 +1,7 @@
 # Trilha procedural bem baixa (pulso suave) + SFX de caneta/pop/impacto. Voz em primeiro plano.
-import numpy as np, json, subprocess
+import numpy as np, json, subprocess, sys
+sys.path.insert(0,'.')
+from shots import whips
 from scipy.io import wavfile
 from scipy.signal import lfilter
 SR=44100
@@ -73,6 +75,11 @@ for k in range(6): add(sfx,tok(),starts[4]+k*0.2,0.5)
 add(sfx,slosh(1.4),wt(4,'onda'),0.6); add(sfx,slosh(2.0),starts[5],0.7); add(sfx,thud(),wt(5,'casas'),0.8)
 add(sfx,thud(),wt(8,'malfeito')-0.75,0.9); add(sfx,clack(),wt(8,'malfeito')-0.75,0.6)
 add(sfx,ding(),wt(9,'siga'),0.4); add(sfx,slosh(1.6),wt(9,'afinal'),0.5)
+def whoosh():
+    n=int(.28*SR); t=np.arange(n)/SR
+    x=lfilter([0.15],[1,-0.85],rng.standard_normal(n)); return x*np.sin(np.pi*t/.28)**2*2.2
+for i in range(len(D)):
+    for t0 in whips(i): add(sfx,whoosh(),starts[i]+t0-0.04,0.55)
 venv=lfilter([0.002],[1,-0.998],np.abs(voice)); venv=venv/(venv.max()+1e-9)
 duck=1-0.6*np.clip(venv*3,0,1)
 mix=voice*1.0+music*0.10*duck+sfx*0.28

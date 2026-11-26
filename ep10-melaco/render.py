@@ -9,6 +9,7 @@ D = json.load(open('aud/durs.json'))
 STARTS = np.concatenate([[0], np.cumsum(D)[:-1]])
 sys.path.insert(0, '.')
 from script import LINES
+from shots import SHOTS
 
 # ---------- palavras ----------
 def load_words(i):
@@ -43,6 +44,8 @@ DGRAY = (0.33, 0.34, 0.37); LGRAY = (0.82, 0.83, 0.85)
 def c255(c): return tuple(int(v * 255) for v in c)
 
 JS = 0
+TPG = 0.0
+ZL = 1.0
 def nz(a, b=0.0):
     v = math.sin(a * 12.9898 + b * 78.233 + JS * 37.719) * 43758.5453
     return (v - math.floor(v)) * 2 - 1
@@ -55,7 +58,7 @@ def stroke(c, pts, w=8, col=INK, closed=False, fill=None, amp=2.0, seed=0):
     if closed: c.close_path()
     if fill is not None:
         c.set_source_rgb(*fill); c.fill_preserve()
-    c.set_source_rgb(*col); c.set_line_width(w); c.set_line_cap(cairo.LINE_CAP_ROUND); c.set_line_join(cairo.LINE_JOIN_ROUND)
+    c.set_source_rgb(*col); c.set_line_width(w / ZL); c.set_line_cap(cairo.LINE_CAP_ROUND); c.set_line_join(cairo.LINE_JOIN_ROUND)
     c.stroke()
 
 def ell_pts(cx, cy, rx, ry, rot=0.0, n=28, a0=0.0, a1=2 * math.pi):
@@ -81,11 +84,17 @@ def txt(s, size, cx, cy, col=INK, rot=0, weight='Black'): TXT.append((s, size, c
 # ---------- personagens ----------
 def man(c, x, y, s=1.0, f=1, arm=(-15, 15), leg=(8, -8), expr='n', hat=None, prop=None, w=8):
     d = lambda a, L, ox, oy: (ox + f * L * math.sin(math.radians(a)) * s, oy + L * math.cos(math.radians(a)) * s)
-    hipy, shy, hy = y - 115 * s, y - 190 * s, y - 252 * s
-    for a in leg: stroke(c, [(x, hipy), d(a, 115, x, hipy)], w)
+    ph = TPG * 6 + x * 0.013
+    y = y - (abs(math.sin(ph * 1.5)) * 18 * s if expr == 'shock' else 0)
+    bob = (0.5 + 0.5 * math.sin(ph)) * 7 * s
+    sway = 15 if expr == 'shock' else 8
+    hip0 = y - 115 * s
+    hipy, shy, hy = hip0 - bob * 0.5, y - 190 * s - bob, y - 252 * s - bob * 1.4 + 3 * math.sin(ph * 0.5) * s
+    for a in leg: stroke(c, [(x, hipy), d(a, 115, x, hip0)], w)
     stroke(c, [(x, shy), (x, hipy)], w)
     hands = []
-    for a in arm:
+    for k, a in enumerate(arm):
+        a = a + sway * math.sin(ph * 1.7 + k * 2.3)
         e = d(a, 95, x, shy + 8 * s); stroke(c, [(x, shy + 8 * s), e], w); hands.append(e)
     if prop == 'tie': stroke(c, [(x, shy + 4 * s), (x - 16 * s, shy + 56 * s), (x + 16 * s, shy + 56 * s)], 5, INK, True, RED, 1)
     if prop == 'medal':
@@ -93,7 +102,10 @@ def man(c, x, y, s=1.0, f=1, arm=(-15, 15), leg=(8, -8), expr='n', hat=None, pro
     ellipse(c, x, hy, 46 * s, 46 * s, w, WHITE, seed=3)
     ex = 15 * s; ey = hy - 6 * s; my = hy + 20 * s
     if expr in ('n', 'sad', 'smile', 'angry'):
-        for sg in (-1, 1): ellipse(c, x + sg * ex, ey, 4.5 * s, 4.5 * s, 3, INK)
+        blink = (int(TPG * 15) + int(x)) % 40 == 0
+        for sg in (-1, 1):
+            if blink: stroke(c, [(x + sg * ex - 7 * s, ey), (x + sg * ex + 7 * s, ey)], 4)
+            else: ellipse(c, x + sg * ex, ey, 4.5 * s, 4.5 * s, 3, INK)
     if expr == 'n': stroke(c, [(x - 12 * s, my), (x + 12 * s, my)], 6)
     elif expr == 'sad': arc(c, x, my + 14 * s, 15 * s, 12 * s, 200, 340, 6)
     elif expr == 'smile': arc(c, x, my - 8 * s, 18 * s, 14 * s, 20, 160, 6)
@@ -209,10 +221,10 @@ def wheat(c, x0, x1, gy, n, tp=0.0, eaten=0.0, seed=1):
         stroke(c, [(x, gy), (x + lean, gy - h)], 5, INK, False, None, 1.2, k)
         ellipse(c, x + lean, gy - h - 14, 8, 20, 4, YEL, rot=0.15 * math.sin(k), seed=k)
 
-def ground(c, x0=70, x1=1010, y=1090):
+def ground(c, x0=-800, x1=1880, y=1090):
     stroke(c, [(x0, y), ((x0 + x1) / 2, y + 3), (x1, y - 2)], 7, INK, False, None, 2.5, 40)
-    for k in range(7):
-        gx = x0 + 60 + k * 135 + nz(k, 3) * 25
+    for k in range(-6, 20):
+        gx = 130 + k * 135 + nz(k, 3) * 25
         stroke(c, [(gx - 12, y + 26), (gx, y + 14), (gx + 12, y + 26)], 4, INK, False, None, 1, k)
 
 def dust(c, x, y, f, tp):
@@ -262,7 +274,7 @@ def hatch(c, x0, y0, x1, y1, step=34, seed=0):
 
 def wave(c, x0, x1, gy, hgt, tp, seed=0, curl=True):
     # massa de melaço: topo ondulado, crista que enrola para a frente (direita)
-    pts = [(x0, gy)]
+    pts = [(-900, gy), (-900, gy - hgt * 0.35)]
     n = 14
     for k in range(n + 1):
         u = k / n
@@ -277,7 +289,7 @@ def wave(c, x0, x1, gy, hgt, tp, seed=0, curl=True):
         pts.append((x1, gy))
     stroke(c, pts, 9, INK, True, BROWN, 2.0, seed)
     # enrolar da crista (espiral)
-    xc, yc = pts[n + 1]
+    xc, yc = pts[n + 2]
     sp = [(xc + hgt * 0.12 + hgt * 0.13 * (1 - u) * math.cos(4.2 * u * math.pi), yc + hgt * 0.16 + hgt * 0.13 * (1 - u) * math.sin(4.2 * u * math.pi)) for u in [k / 16 for k in range(14)]]
     if curl: stroke(c, sp, 7, LBROWN, False, None, 1.0, seed + 3)
     hatch(c, x0 + 20, gy - hgt * 0.22, x0 + (x1 - x0) * 0.5, gy - 10, 46, seed)
@@ -287,7 +299,7 @@ def wave(c, x0, x1, gy, hgt, tp, seed=0, curl=True):
         xa = x0 + 60 + 40 * k; xb = x0 + (x1 - x0) * (0.45 + 0.12 * k)
         if xb > xa: stroke(c, [(xa, y), ((xa + xb) / 2, y - 12), (xb, y)], 6, LBROWN, False, None, 1.5, seed + k)
     # respingos na crista
-    xc, yc = pts[n + 1]
+    xc, yc = pts[n + 2]
     for k in range(4):
         ang = -1.2 + 0.5 * k + 0.2 * math.sin(tp * 9 + k)
         r = 30 + 18 * ((tp * 8 + k) % 2)
@@ -641,11 +653,28 @@ def caption(draw, i, t):
     draw.rounded_rectangle((x0, cy - bh / 2, x1, cy + bh / 2), radius=6, fill=(0, 0, 0))
     draw.text((cx, cy + 2), s, font=f, fill=(255, 255, 255), anchor='mm')
 
+def camera(i, t):
+    sh = SHOTS.get(i) or [(0, 1, 1, (540, 640), (540, 640), False, 0)]
+    cur = 0
+    for k, s_ in enumerate(sh):
+        if t >= s_[0]: cur = k
+    t0, z0, z1, f0, f1, fix, wh = sh[cur]
+    t1 = sh[cur + 1][0] if cur + 1 < len(sh) else D[i]
+    lin = min(1, max(0, (t - t0) / max(0.01, t1 - t0)))
+    u = 0.5 * lin + 0.5 * smoothstep(lin)
+    Z = z0 + (z1 - z0) * u
+    fx = f0[0] + (f1[0] - f0[0]) * u; fy = f0[1] + (f1[1] - f0[1]) * u
+    wx = 0.0; whip = 0.0
+    if wh and t - t0 < 0.2:
+        v = (t - t0) / 0.2; wx = wh * 700 * (1 - v) ** 2; whip = 1 - v
+    return Z, fx, fy, wx, fix, whip
+
 def render_frame(i, k):
-    global JS
+    global JS, TPG, ZL
     t = k / FPS
     P = int(t * 15)
     tp = P / 15.0
+    TPG = tp
     JS = P % 3
     SHAKE[0] = 0; SHAKE[1] = 0
     TXT.clear()
@@ -653,7 +682,10 @@ def render_frame(i, k):
     c = cairo.Context(surf)
     c.set_source_rgb(1, 1, 1); c.paint()
     # a tremida de impacto é aplicada depois de desenhar (translação do contexto precisa vir antes)
+    Z, fx, fy, wx, fixtxt, whip = camera(i, t)
+    ZL = Z
     c.save()
+    c.translate(540 + wx, 640); c.scale(Z, Z); c.translate(-fx, -fy)
     SCENES[i](c, t, tp)
     c.restore()
     buf = np.frombuffer(surf.get_data(), np.uint8).reshape(H, W, 4)
@@ -663,6 +695,8 @@ def render_frame(i, k):
     dr = ImageDraw.Draw(img)
     for s, size, cx, cy, col, rot, wgt in TXT:
         if not s: continue
+        if not fixtxt:
+            cx = (cx - fx) * Z + 540 + wx; cy = (cy - fy) * Z + 640; size = max(8, int(size * Z))
         f = font(size, wgt)
         if rot:
             tw = int(dr.textlength(s, font=f)) + 40; th = int(size * 1.5)
@@ -671,6 +705,11 @@ def render_frame(i, k):
             img.paste(lay, (int(cx - lay.width / 2), int(cy - lay.height / 2)), lay)
         else:
             dr.text((cx, cy), s, font=f, fill=col, anchor='mm')
+    if whip > 0.05:  # riscos de velocidade no deslize de câmera
+        for q in range(7):
+            yy = int(200 + (nz(q, 4.1) * 0.5 + 0.5) * 1100); ln = int(300 + 600 * whip)
+            x0 = int((nz(q, 8.3) * 0.5 + 0.5) * 700)
+            dr.line((x0, yy, x0 + ln, yy), fill=(17, 17, 17), width=5)
     caption(dr, i, t)
     return img
 
